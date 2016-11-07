@@ -12,53 +12,61 @@ namespace Economica
 {
     public partial class Form1 : Form
     {
-        private int _workDaysCount = 260;
-        private int _shifts = 2;
-        private int _shiftDuration = 8;
-        private double _machineDowntimePercent = 6.0;
+        private readonly int _workDaysCount = 250;
+        private readonly int _shifts = 2;
+        private readonly int _shiftDuration = 8;
+        private readonly double _machineDowntimePercent = 6.0;
         private double _workDowntimePercent = 15;
-        private double _normCompletePercent = 103;
+        private readonly double _normCompletePercent = 103;
         private int _deliveryInterval = 35;
         private int _cycleDuration = 4;
         private int _shipmentFreq = 2;
         private double _wastePrice = 1500;
         private double _specificWeight = 45;
-        private double _squarePrice = 9400;
+        private readonly double _squarePrice = 9400;
         private double _addSalaryPercent = 15;
         private double _profitPercent = 30;
-        private double _machineDepreciation = 20;
-        private double _shopDepreciation = 2.5;
+        private readonly double _machineDepreciation = 20;
+        private readonly double _shopDepreciation = 2.5;
         private double _usageCoeff = 0.9;
         Material _steel = new Material(35, 7800, new Size(35, 40, 20));
-        Machine _frezMachine = new Machine(239800, 3.7f, 8);
-        Machine _sverlMachine = new Machine(186500, 1.0f, 4);
-        Machine _rastMachine = new Machine(166950, 16.3f, 34);
-        Machine _shlifMachine = new Machine(151000, 4.8f, 10);
-        Machine _tokMachine = new Machine(181500, 7.6f, 16);
-        Operation _frez = new Operation(28, 1.5f);
-        Operation _sverl = new Operation(22, 1.7f);
-        Operation _rast = new Operation(35, 2.6f);
-        Operation _shlif = new Operation(35, 1.7f);
-        Operation _tok = new Operation(22, 1.9f);
-        private int _release = 160000;
-        private Dictionary<Machine, int> _machinesCount = new Dictionary<Machine, int>();
-        private List<Machine> _machines = new List<Machine>();
-        private List<Operation> _operations = new List<Operation>();
-        Dictionary<Operation, double> _trudoemkost = new Dictionary<Operation, double>(); 
-        Dictionary<Machine, double> _machinesCost = new Dictionary<Machine, double>(); 
-        Dictionary<Machine, double> _squaresDictionary = new Dictionary<Machine, double>();
+        readonly Machine _frezMachine = new Machine(239800, 3.7f, 8);
+        readonly Machine _sverlMachine = new Machine(186500, 1.0f, 4);
+        readonly Machine _rastMachine = new Machine(166950, 16.3f, 34);
+        readonly Machine _shlifMachine = new Machine(151000, 4.8f, 10);
+        readonly Machine _tokMachine = new Machine(181500, 7.6f, 16);
+        readonly Operation _frez = new Operation(28, 1.5f);
+        readonly Operation _sverl = new Operation(22, 1.7f);
+        readonly Operation _rast = new Operation(35, 2.6f);
+        readonly Operation _shlif = new Operation(35, 1.7f);
+        readonly Operation _tok = new Operation(22, 1.9f);
+        private readonly int _release = 160000;
+        private readonly Dictionary<Machine, int> _machinesCount = new Dictionary<Machine, int>();
+        private readonly List<Machine> _machines = new List<Machine>();
+        private readonly List<Operation> _operations = new List<Operation>();
+        readonly Dictionary<Operation, double> _trudoemkost = new Dictionary<Operation, double>();
+        readonly Dictionary<Machine, double> _machinesCost = new Dictionary<Machine, double>();
+        readonly Dictionary<Machine, double> _squaresDictionary = new Dictionary<Machine, double>();
         private double _totalMachinesCost;
         private double _totalBuildingCost;
-        private Dictionary<Machine, double> _depreciationSum = new Dictionary<Machine, double>();
+        private readonly Dictionary<Machine, double> _depreciationSum = new Dictionary<Machine, double>();
         private double _buildingDepreciation;
+        private readonly Dictionary<Machine, double> _powers = new Dictionary<Machine, double>();
+        private double _effectiveTimeFond;
+        private readonly Dictionary<Machine, double> _loadCoeffs = new Dictionary<Machine, double>();
+        private double _effectiveTimeFondWorker;
+        private Dictionary<Operation, int> _workersCount = new Dictionary<Operation, int>(); 
          
 
         public void GetMachinesCount()
         {
-            var feff = _workDaysCount*_shifts*_shiftDuration*(1 - _machineDowntimePercent/100);
+            _effectiveTimeFond = _workDaysCount * _shifts * _shiftDuration 
+                * (1 - _machineDowntimePercent / 100);
+            //MessageBox.Show(_effectiveTimeFond.ToString());
+            //var feff = _workDaysCount*_shifts*_shiftDuration*(1 - _machineDowntimePercent/100);
             foreach (var t in _operations)
             {
-                var count = Math.Ceiling(_release/feff*t.RateTime/60);
+                var count = Math.Ceiling(_release/_effectiveTimeFond*t.RateTime/60);
                 _machinesCount[_machines[_operations.IndexOf(t)]] = (int)count;
                 var trud = 1.0*_release*t.RateTime/60;
                 _trudoemkost[t] = Math.Ceiling(trud);
@@ -96,6 +104,26 @@ namespace Economica
             _buildingDepreciation = _totalBuildingCost*_shopDepreciation/100;
         }
 
+        void GetPowers()
+        {
+            foreach (var t in _machines)
+            {
+                _powers[t] = _effectiveTimeFond*_machinesCount[t]*_normCompletePercent/100*60
+                             /_operations[_machines.IndexOf(t)].RateTime;
+                _loadCoeffs[t] = _release/_powers[t];
+            }
+        }
+
+        void GetWorkersCount()
+        {
+            _effectiveTimeFondWorker = _workDaysCount*_shiftDuration*(1 - _workDowntimePercent/100);
+            foreach (var t in _operations)
+            {
+                _workersCount[t] = (int)Math.Ceiling(t.RateTime/60*_release/_effectiveTimeFondWorker/
+                    (_normCompletePercent/100));
+            }
+        }
+
         public Form1()
         {
             InitializeComponent();
@@ -117,6 +145,8 @@ namespace Economica
             GetTotalSquare();
             GetTotalCost();
             GetDepreciationSum();
+            GetPowers();
+            GetWorkersCount();
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -251,10 +281,51 @@ namespace Economica
             dataGridView1.Rows.Add();
             dataGridView1[0, index].Value = index + 1;
             dataGridView1[1, index].Value = "Здания";
-            //dataGridView1[2, index].Value = _machinesCount[t];
             dataGridView1[3, index].Value = _totalBuildingCost;
             dataGridView1[4, index].Value = _shopDepreciation;
             dataGridView1[5, index].Value = _buildingDepreciation;
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            dataGridView1.Columns.Add("1", "№№ пп");
+            dataGridView1.Columns.Add("2", "Виды оборудования");
+            dataGridView1.Columns.Add("3", "Количество единиц оборудования, шт.");
+            dataGridView1.Columns.Add("4", "Мощность оборудования, шт.");
+            dataGridView1.Columns.Add("5", "Коэффициент загрузки");
+            var index = 0;
+            foreach (var t in _machines)
+            {
+                dataGridView1.Rows.Add();
+                dataGridView1[0, index].Value = index + 1;
+                dataGridView1[1, index].Value = "name";
+                dataGridView1[2, index].Value = _machinesCount[t];
+                dataGridView1[3, index].Value = _powers[t];
+                dataGridView1[4, index].Value = _loadCoeffs[t];
+                index++;
+            }
+        }
+
+        private void button7_Click(object sender, EventArgs e)
+        {
+            dataGridView1.Columns.Add("1", "№№ пп");
+            dataGridView1.Columns.Add("2", "Наименование операции");
+            dataGridView1.Columns.Add("3", "Разряд работы");
+            dataGridView1.Columns.Add("4", "Норма времени на операцию");
+            dataGridView1.Columns.Add("5", "Трудоемкость годового объема производства");
+            dataGridView1.Columns.Add("6", "Численность рабочих сдельщиков");
+            var index = 0;
+            foreach (var t in _operations)
+            {
+                dataGridView1.Rows.Add();
+                dataGridView1[0, index].Value = index + 1;
+                dataGridView1[1, index].Value = "name";
+                dataGridView1[2, index].Value = "razeyad";
+                dataGridView1[3, index].Value = t.RateTime;
+                dataGridView1[4, index].Value = _trudoemkost[t];
+                dataGridView1[5, index].Value = _workersCount[t];
+                index++;
+            }
         }
     }
 }
