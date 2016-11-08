@@ -27,5 +27,10 @@
         {
             get { return _height; }
         }
+
+        public double Volume
+        {
+            get { return _length*_width*_height; }
+        }
     }
 }

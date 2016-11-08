@@ -124,28 +124,31 @@
             // 
             this.button8.Location = new System.Drawing.Point(306, 506);
             this.button8.Name = "button8";
-            this.button8.Size = new System.Drawing.Size(95, 23);
+            this.button8.Size = new System.Drawing.Size(95, 77);
             this.button8.TabIndex = 8;
-            this.button8.Text = "button8";
+            this.button8.Text = "Фонд основной зароботной платы";
             this.button8.UseVisualStyleBackColor = true;
+            this.button8.Click += new System.EventHandler(this.button8_Click);
             // 
             // button9
             // 
             this.button9.Location = new System.Drawing.Point(427, 506);
             this.button9.Name = "button9";
-            this.button9.Size = new System.Drawing.Size(95, 23);
+            this.button9.Size = new System.Drawing.Size(95, 77);
             this.button9.TabIndex = 9;
-            this.button9.Text = "button9";
+            this.button9.Text = "Калькуляция цеховой себестоимости детали";
             this.button9.UseVisualStyleBackColor = true;
+            this.button9.Click += new System.EventHandler(this.button9_Click);
             // 
             // button10
             // 
             this.button10.Location = new System.Drawing.Point(555, 506);
             this.button10.Name = "button10";
-            this.button10.Size = new System.Drawing.Size(95, 23);
+            this.button10.Size = new System.Drawing.Size(95, 77);
             this.button10.TabIndex = 10;
-            this.button10.Text = "button10";
+            this.button10.Text = "Результаты расчетов";
             this.button10.UseVisualStyleBackColor = true;
+            this.button10.Click += new System.EventHandler(this.button10_Click);
             // 
             // Form1
             // 
