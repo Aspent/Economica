@@ -7,13 +7,14 @@ namespace Economica
 {
     public partial class Form1 : Form
     {
-        readonly Operation _frez = new Operation(28, 1.4f);
-        readonly Operation _sverl = new Operation(22, 2.9f);
-        readonly Operation _rast = new Operation(35, 1.0f);
-        readonly Operation _shlif = new Operation(35, 1.5f);
-        readonly Operation _tok = new Operation(22, 2.9f);
+        readonly Operation _frez = new Operation(28, 1.4f, "Фрезерование");
+        readonly Operation _sverl = new Operation(22, 2.9f, "Сверление");
+        readonly Operation _rast = new Operation(35, 1.0f, "Расточка");
+        readonly Operation _shlif = new Operation(35, 1.5f, "Шлифование");
+        readonly Operation _tok = new Operation(22, 2.9f, "Токарная");
         Material _steel = new Material(35, 7800, new Size(0.035, 0.040, 0.020));
         private double _usageCoeff = 0.6;
+        private readonly int _release = 155000;
 
 
 
@@ -40,12 +41,11 @@ namespace Economica
         private double _profitPercent = 30;
         private readonly double _machineDepreciation = 20;
         private readonly double _shopDepreciation = 2.5;           
-        readonly Machine _frezMachine = new Machine(239800, 3.7f, 8);
-        readonly Machine _sverlMachine = new Machine(186500, 1.0f, 4);
-        readonly Machine _rastMachine = new Machine(166950, 16.3f, 34);
-        readonly Machine _shlifMachine = new Machine(151000, 4.8f, 10);
-        readonly Machine _tokMachine = new Machine(181500, 7.6f, 16);    
-        private readonly int _release = 160000;
+        readonly Machine _frezMachine = new Machine(239800, 3.7f, 8, "Фрезерный станок");
+        readonly Machine _sverlMachine = new Machine(186500, 1.0f, 4, "Сверлильный станок");
+        readonly Machine _rastMachine = new Machine(166950, 16.3f, 34, "Расточный станок");
+        readonly Machine _shlifMachine = new Machine(151000, 4.8f, 10, "Шлифовальный станок");
+        readonly Machine _tokMachine = new Machine(181500, 7.6f, 16, "Токарный станок");    
         private readonly Dictionary<Machine, int> _machinesCount = new Dictionary<Machine, int>();
         private readonly List<Machine> _machines = new List<Machine>();
         private readonly List<Operation> _operations = new List<Operation>();
@@ -128,8 +128,8 @@ namespace Economica
         {
             foreach (var t in _machines)
             {
-                _powers[t] = _effectiveTimeFond*_machinesCount[t]*_normCompletePercent/100*60
-                             /_operations[_machines.IndexOf(t)].RateTime;
+                _powers[t] = Math.Ceiling(_effectiveTimeFond*_machinesCount[t]*_normCompletePercent/100*60
+                             /_operations[_machines.IndexOf(t)].RateTime);
                 _loadCoeffs[t] = _release/_powers[t];
             }
         }
@@ -165,31 +165,28 @@ namespace Economica
                         _totalSalaryFond*_baseSalary;
 
             _primeCost = _materialCost * (1.08) + _wasteCost + 1.3 * (1.15 * _baseSalary) + _ecspCost + _shopCost;
-
-
-
-
         }
 
         void GetStock()
         {
             var dayUsage = _steel.Size.Volume*_steel.Density*_release/360;
-            
             _currentStock = dayUsage*_deliveryInterval*_steel.Price/2;
-            
 
+            
             _strStock = dayUsage*(_maxDeliveryInterval - _deliveryInterval)*_steel.Price;
-            
 
+            
             _normStock = _currentStock + _strStock;
+            
 
             var coeff = (_specificWeight/100) + (1 - (_specificWeight/100))/2;
             var cost = _steel.Size.Volume*_steel.Density*_steel.Price;
             var costDay = cost*_release/(_specificWeight/100)/360;
+            
             _normUnfinished = costDay*coeff*_cycleDuration;
-          //  MessageBox.Show(costDay.ToString());
 
             var selfCost = cost/(_specificWeight/100);
+            
             _normFinished = selfCost*_release/_workDaysCount*_shipmentFreq;
 
 
@@ -230,71 +227,92 @@ namespace Economica
 
         private void button1_Click(object sender, EventArgs e)
         {
+            dataGridView1.Rows.Clear();
+            dataGridView1.Columns.Clear();
             
             dataGridView1.Columns.Add("1", "№№ пп");
             dataGridView1.Columns.Add("2", "Наименование операций");
-            dataGridView1.Columns.Add("3", "Норма времени на операцию");
-            dataGridView1.Columns.Add("4", "Годовой объем производства");
-            dataGridView1.Columns.Add("5", "Трудоемкость годового объема производства");
-            dataGridView1.Columns.Add("6", "Количество единиц для оборудования");
-            int index = 0;
+            dataGridView1.Columns.Add("3", "Норма времени на операцию, мин");
+            dataGridView1.Columns.Add("4", "Годовой объем производства, шт");
+            dataGridView1.Columns.Add("5", "Трудоемкость годового объема производства, час");
+            dataGridView1.Columns.Add("6", "Количество единиц для оборудования, шт");
+            var index = 0;
             foreach (var t in _operations)
             {
                 dataGridView1.Rows.Add();
                 dataGridView1[0, index].Value = index + 1;
-                dataGridView1[1, index].Value = "name";
+                dataGridView1[1, index].Value = t.Title;
                 dataGridView1[2, index].Value = t.RateTime;
                 dataGridView1[3, index].Value = _release;
                 dataGridView1[4, index].Value = _trudoemkost[t];
                 dataGridView1[5, index].Value = _machinesCount[_machines[index]];
                 index++;
             }
+            dataGridView1.Rows.Add();
+            dataGridView1[0, index].Value = "Итого";
+            dataGridView1[5, index].Value = _machinesCount.Sum(x => x.Value); 
         }
 
         private void button2_Click(object sender, EventArgs e)
         {
+            dataGridView1.Rows.Clear();
+            dataGridView1.Columns.Clear();
             dataGridView1.Columns.Add("1", "№№ пп");
             dataGridView1.Columns.Add("2", "Виды оборудования");
-            dataGridView1.Columns.Add("3", "Цена за единицу оборудования данного вида");
-            dataGridView1.Columns.Add("4", "Количество единиц оборудования");
-            dataGridView1.Columns.Add("5", "Общая стоимость оборудования");
-            int index = 0;
+            dataGridView1.Columns.Add("3", "Цена за единицу оборудования данного вида, руб");
+            dataGridView1.Columns.Add("4", "Количество единиц оборудования, шт");
+            dataGridView1.Columns.Add("5", "Общая стоимость оборудования, руб");
+            var index = 0;
             foreach (var t in _machines)
             {
                 dataGridView1.Rows.Add();
                 dataGridView1[0, index].Value = index + 1;
-                dataGridView1[1, index].Value = "name";
+                dataGridView1[1, index].Value = t.Title;
                 dataGridView1[2, index].Value = t.Price;
                 dataGridView1[3, index].Value = _machinesCount[t];
                 dataGridView1[4, index].Value = _machinesCost[t];
                 index++;
             }
+            dataGridView1.Rows.Add();
+            dataGridView1[0, index].Value = "Итого по группе рабочие машины";
+            dataGridView1[4, index].Value = _totalMachinesCost;
+
         }
 
         private void button3_Click(object sender, EventArgs e)
         {
+            dataGridView1.Rows.Clear();
+            dataGridView1.Columns.Clear();
             dataGridView1.Columns.Add("1", "№№ пп");
             dataGridView1.Columns.Add("2", "Виды оборудования");
             dataGridView1.Columns.Add("3", "Количество единиц оборудования");
-            dataGridView1.Columns.Add("4", "Основная площадь");
-            dataGridView1.Columns.Add("5", "Дополнительная площадь");
-            dataGridView1.Columns.Add("6", "Общая площадь");
-            int index = 0;
+            dataGridView1.Columns.Add("4", "Основная площадь, м^2");
+            dataGridView1.Columns.Add("5", "Дополнительная площадь, м^2");
+            dataGridView1.Columns.Add("6", "Общая площадь, м^2");
+            var index = 0;
             foreach (var t in _machines)
             {
                 dataGridView1.Rows.Add();
                 dataGridView1[0, index].Value = index + 1;
-                dataGridView1[1, index].Value = "name";
+                dataGridView1[1, index].Value = t.Title;
                 dataGridView1[2, index].Value = _machinesCount[t];
                 dataGridView1[3, index].Value = t.BaseSquare;
                 dataGridView1[4, index].Value = t.AddSquare;
-                dataGridView1[5, index].Value = _squaresDictionary[t];
+                dataGridView1[5, index].Value = $"{_squaresDictionary[t]:0.00}";
                 index++;
             }
+            dataGridView1.Rows.Add();
+            dataGridView1[1, index].Value = "Итого";
+            dataGridView1[2, index].Value = _machinesCount.Sum(x => x.Value);
+            dataGridView1[3, index].Value = _machines.Sum(x => x.BaseSquare);
+            dataGridView1[4, index].Value = _machines.Sum(x => x.AddSquare);
+            dataGridView1[5, index].Value = $"{_squaresDictionary.Sum(x => x.Value):0.00}";
         }
 
         private void button4_Click(object sender, EventArgs e)
         {
+            dataGridView1.Rows.Clear();
+            dataGridView1.Columns.Clear();
             dataGridView1.Columns.Add("1", "№№ пп");
             dataGridView1.Columns.Add("2", "Классификационные группы");
             dataGridView1.Columns.Add("3", "");
@@ -303,7 +321,7 @@ namespace Economica
             dataGridView1.Rows.Add();
             dataGridView1[0, 0].Value = 1;
             dataGridView1[1, 0].Value = "Здания";
-            dataGridView1[3, 0].Value = String.Format("{0:0.00}", _totalBuildingCost);
+            dataGridView1[3, 0].Value = $"{_totalBuildingCost:0.00}";
 
             dataGridView1.Rows.Add();
             dataGridView1[0, 1].Value = 2;
@@ -330,24 +348,24 @@ namespace Economica
             dataGridView1[1, 4].Value = "Инструменты";
             dataGridView1[2, 4].Value = coeff * 100 + "%";
             dataGridView1[3, 4].Value = _totalMachinesCost * coeff;
-
-            //_totalBaseFondCost = _totalBuildingCost + _totalMachinesCost*(1.18);
         }
 
         private void button5_Click(object sender, EventArgs e)
         {
+            dataGridView1.Rows.Clear();
+            dataGridView1.Columns.Clear();
             dataGridView1.Columns.Add("1", "№№ пп");
             dataGridView1.Columns.Add("2", "Виды основных фондов");
             dataGridView1.Columns.Add("3", "Количество, шт");
-            dataGridView1.Columns.Add("4", "Стоимость");
+            dataGridView1.Columns.Add("4", "Стоимость, руб");
             dataGridView1.Columns.Add("5", "Норма амортизации");
-            dataGridView1.Columns.Add("6", "Начисленная амортизация");
+            dataGridView1.Columns.Add("6", "Начисленная амортизация, руб");
             var index = 0;
             foreach (var t in _machines)
             {
                 dataGridView1.Rows.Add();
                 dataGridView1[0, index].Value = index + 1;
-                dataGridView1[1, index].Value = "name";
+                dataGridView1[1, index].Value = t.Title;
                 dataGridView1[2, index].Value = _machinesCount[t];
                 dataGridView1[3, index].Value = _machinesCost[t];
                 dataGridView1[4, index].Value = _machineDepreciation;
@@ -357,13 +375,20 @@ namespace Economica
             dataGridView1.Rows.Add();
             dataGridView1[0, index].Value = index + 1;
             dataGridView1[1, index].Value = "Здания";
-            dataGridView1[3, index].Value = _totalBuildingCost;
+            dataGridView1[3, index].Value = $"{_totalBuildingCost:0.00}";
             dataGridView1[4, index].Value = _shopDepreciation;
-            dataGridView1[5, index].Value = _buildingDepreciation;
+            dataGridView1[5, index].Value = $"{_buildingDepreciation:0.00}";
+            index++;
+            dataGridView1.Rows.Add();
+            dataGridView1[1, index].Value = "Итого";
+            dataGridView1[3, index].Value = $"{_totalBuildingCost + _machinesCost.Sum(x => x.Value):0.00}";
+            dataGridView1[5, index].Value = $"{_buildingDepreciation + _depreciationSum.Sum(x => x.Value):0.00}";
         }
 
         private void button6_Click(object sender, EventArgs e)
         {
+            dataGridView1.Rows.Clear();
+            dataGridView1.Columns.Clear();
             dataGridView1.Columns.Add("1", "№№ пп");
             dataGridView1.Columns.Add("2", "Виды оборудования");
             dataGridView1.Columns.Add("3", "Количество единиц оборудования, шт.");
@@ -374,60 +399,71 @@ namespace Economica
             {
                 dataGridView1.Rows.Add();
                 dataGridView1[0, index].Value = index + 1;
-                dataGridView1[1, index].Value = "name";
+                dataGridView1[1, index].Value = t.Title;
                 dataGridView1[2, index].Value = _machinesCount[t];
                 dataGridView1[3, index].Value = _powers[t];
-                dataGridView1[4, index].Value = _loadCoeffs[t];
+                dataGridView1[4, index].Value = $"{_loadCoeffs[t]:0.00}";
                 index++;
             }
         }
 
         private void button7_Click(object sender, EventArgs e)
         {
+            dataGridView1.Rows.Clear();
+            dataGridView1.Columns.Clear();
             dataGridView1.Columns.Add("1", "№№ пп");
             dataGridView1.Columns.Add("2", "Наименование операции");
-            dataGridView1.Columns.Add("3", "Разряд работы");
-            dataGridView1.Columns.Add("4", "Норма времени на операцию");
-            dataGridView1.Columns.Add("5", "Трудоемкость годового объема производства");
-            dataGridView1.Columns.Add("6", "Численность рабочих сдельщиков");
+            dataGridView1.Columns.Add("3", "Норма времени на операцию, мин");
+            dataGridView1.Columns.Add("4", "Трудоемкость годового объема производства, час");
+            dataGridView1.Columns.Add("5", "Численность рабочих сдельщиков");
             var index = 0;
             foreach (var t in _operations)
             {
                 dataGridView1.Rows.Add();
                 dataGridView1[0, index].Value = index + 1;
-                dataGridView1[1, index].Value = "name";
-                dataGridView1[2, index].Value = "razeyad";
-                dataGridView1[3, index].Value = t.RateTime;
-                dataGridView1[4, index].Value = _trudoemkost[t];
-                dataGridView1[5, index].Value = _workersCount[t];
+                dataGridView1[1, index].Value = t.Title;
+                dataGridView1[2, index].Value = t.RateTime;
+                dataGridView1[3, index].Value = _trudoemkost[t];
+                dataGridView1[4, index].Value = _workersCount[t];
                 index++;
             }
+            dataGridView1.Rows.Add();
+            dataGridView1[1, index].Value = "Итого";
+            dataGridView1[4, index].Value = _workersCount.Sum(x => x.Value);
         }
 
         private void button8_Click(object sender, EventArgs e)
         {
+            dataGridView1.Rows.Clear();
+            dataGridView1.Columns.Clear();
             dataGridView1.Columns.Add("1", "№№ пп");
             dataGridView1.Columns.Add("2", "Наименование операции");
-            dataGridView1.Columns.Add("3", "Норма времени на операцию");
-            dataGridView1.Columns.Add("4", "Трудоемкость годового объема производства");
-            dataGridView1.Columns.Add("5", "Часовая рабочая ставка");
-            dataGridView1.Columns.Add("6", "Фонд основной зароботной платы");
+            dataGridView1.Columns.Add("3", "Норма времени на операцию, мин");
+            dataGridView1.Columns.Add("4", "Трудоемкость годового объема производства, час");
+            dataGridView1.Columns.Add("5", "Часовая рабочая ставка, руб");
+            dataGridView1.Columns.Add("6", "Фонд основной зароботной платы, руб");
             var index = 0;
             foreach (var t in _operations)
             {
                 dataGridView1.Rows.Add();
                 dataGridView1[0, index].Value = index + 1;
-                dataGridView1[1, index].Value = "name";
+                dataGridView1[1, index].Value = t.Title;
                 dataGridView1[2, index].Value = t.RateTime;
                 dataGridView1[3, index].Value = _trudoemkost[t];
                 dataGridView1[4, index].Value = t.WageRate;
-                dataGridView1[5, index].Value = _salaryFonds[t];
+                dataGridView1[5, index].Value = $"{_salaryFonds[t]:0.00}";
                 index++;
             }
+            dataGridView1.Rows.Add();
+            dataGridView1[1, index].Value = "Итого";
+            dataGridView1[5, index].Value = $"{_salaryFonds.Sum(x => x.Value):0.00}";
+
         }
 
         private void button9_Click(object sender, EventArgs e)
         {
+            dataGridView1.Rows.Clear();
+            dataGridView1.Columns.Clear();
             dataGridView1.Columns.Add("1", "№№ пп");
             dataGridView1.Columns.Add("2", "Наименование статей затрат");
             dataGridView1.Columns.Add("3", "Сумма, руб.");
@@ -435,7 +471,7 @@ namespace Economica
             dataGridView1.Rows.Add();
             dataGridView1[0, 0].Value = 1;
             dataGridView1[1, 0].Value = "Основные материалы";
-            dataGridView1[2, 0].Value = _materialCost;
+            dataGridView1[2, 0].Value = $"{_materialCost:0.00}";
 
             dataGridView1.Rows.Add();
             dataGridView1[0, 1].Value = 2;
@@ -445,7 +481,7 @@ namespace Economica
             dataGridView1.Rows.Add();
             dataGridView1[0, 2].Value = 3;
             dataGridView1[1, 2].Value = "Транспортные расходы";
-            dataGridView1[2, 2].Value = _materialCost*0.08;
+            dataGridView1[2, 2].Value = $"{_materialCost*0.08:0.00}";
 
             dataGridView1.Rows.Add();
             dataGridView1[0, 3].Value = 4;
@@ -455,39 +491,45 @@ namespace Economica
             dataGridView1.Rows.Add();
             dataGridView1[0, 4].Value = 5;
             dataGridView1[1, 4].Value = "Отходы возвратные";
-            dataGridView1[2, 4].Value = _wasteCost;
+            dataGridView1[2, 4].Value = $"{_wasteCost:0.00}";
 
             dataGridView1.Rows.Add();
             dataGridView1[0, 5].Value = 6;
             dataGridView1[1, 5].Value = "Основная заработная плата производственных рабочих";
-            dataGridView1[2, 5].Value = _baseSalary;
+            dataGridView1[2, 5].Value = $"{ _baseSalary:0.00}";
 
             var addSalary = _baseSalary*_addSalaryPercent/100;
             dataGridView1.Rows.Add();
             dataGridView1[0, 6].Value = 7;
             dataGridView1[1, 6].Value = "Дополнительная заработная плата производственных рабочих";
-            dataGridView1[2, 6].Value = addSalary;
+            dataGridView1[2, 6].Value = $"{addSalary:0.00}";
 
             dataGridView1.Rows.Add();
             dataGridView1[0, 7].Value = 8;
             dataGridView1[1, 7].Value = "Начисления на заработную плату";
-            dataGridView1[2, 7].Value = (_baseSalary + addSalary)*_profitPercent/100;
+            dataGridView1[2, 7].Value = $"{(_baseSalary + addSalary)*_profitPercent/100:0.00}";
 
             dataGridView1.Rows.Add();
             dataGridView1[0, 8].Value = 9;
             dataGridView1[1, 8].Value = "Расходы по содержанию и эксплуатации оборудования";
-            dataGridView1[2, 8].Value = _ecspCost;
+            dataGridView1[2, 8].Value = $"{_ecspCost:0.00}";
 
             dataGridView1.Rows.Add();
             dataGridView1[0, 9].Value = 10;
             dataGridView1[1, 9].Value = "Цеховые накладные расходы";
-            dataGridView1[2, 9].Value = _shopCost;
+            dataGridView1[2, 9].Value = $"{_shopCost:0.00}";
 
-            _primeCost = _materialCost*(1.08) + _wasteCost + 1.3*(1.15*_baseSalary) + _ecspCost + _shopCost;
+            dataGridView1.Rows.Add();
+            dataGridView1[1, 10].Value = "Итого цеховые расходы:";
+            dataGridView1[2, 10].Value = $"{_primeCost:0.00}";
+
+            
         }
 
         private void button10_Click(object sender, EventArgs e)
         {
+            dataGridView1.Rows.Clear();
+            dataGridView1.Columns.Clear();
             dataGridView1.Columns.Add("1", "№№ пп");
             dataGridView1.Columns.Add("2", "Показатели");
             dataGridView1.Columns.Add("3", "Ед. изм.");
@@ -509,19 +551,19 @@ namespace Economica
             dataGridView1[0, 2].Value = 3;
             dataGridView1[1, 2].Value = "Стоимость производственного помещения цеха";
             dataGridView1[2, 2].Value = "руб.";
-            dataGridView1[3, 2].Value = _totalBuildingCost;
+            dataGridView1[3, 2].Value = $"{_totalBuildingCost:0.00}";
 
             dataGridView1.Rows.Add();
             dataGridView1[0, 3].Value = 4;
             dataGridView1[1, 3].Value = "Общая стоимость основных производственных фондов";
             dataGridView1[2, 3].Value = "руб.";
-            dataGridView1[3, 3].Value = _totalBaseFondCost;
+            dataGridView1[3, 3].Value = $"{_totalBaseFondCost:0.00}";
 
             dataGridView1.Rows.Add();
             dataGridView1[0, 4].Value = 5;
             dataGridView1[1, 4].Value = "Производственная мощность цеха";
             dataGridView1[2, 4].Value = "шт.";
-            dataGridView1[3, 4].Value = _powers.Max(x => x.Value);
+            dataGridView1[3, 4].Value = $"{ _powers.Max(x => x.Value):0.00}";
 
             dataGridView1.Rows.Add();
             dataGridView1[0, 5].Value = 6;
@@ -532,25 +574,26 @@ namespace Economica
             dataGridView1[0, 6].Value = 7;
             dataGridView1[1, 6].Value = "Норматив производственного запаса";
             dataGridView1[2, 6].Value = "руб.";
-            dataGridView1[3, 6].Value = _normStock;
+            dataGridView1[3, 6].Value = $"{_normStock:0.00}";
 
             dataGridView1.Rows.Add();
             dataGridView1[0, 7].Value = 8;
             dataGridView1[1, 7].Value = "Норматив незавершенного производства";
             dataGridView1[2, 7].Value = "руб.";
-            dataGridView1[3, 7].Value = _normUnfinished;
+            dataGridView1[3, 7].Value = $"{_normUnfinished:0.00}";
 
             dataGridView1.Rows.Add();
             dataGridView1[0, 8].Value = 9;
             dataGridView1[1, 8].Value = "Норматив готовой продукции";
             dataGridView1[2, 8].Value = "руб.";
-            dataGridView1[3, 8].Value = _normFinished;
+            dataGridView1[3, 8].Value = $"{_normFinished:0.00}";
 
             dataGridView1.Rows.Add();
             dataGridView1[0, 9].Value = 10;
             dataGridView1[1, 9].Value = "Общая стоимость оборотных средств цеха";
             dataGridView1[2, 9].Value = "руб.";
-            dataGridView1[3, 9].Value = _normStock + _normFinished + _normUnfinished;
+            dataGridView1[3, 9].Value = $"{(_normStock + _normFinished + _normUnfinished):0.00}";
+
 
             dataGridView1.Rows.Add();
             dataGridView1[0, 10].Value = 11;
@@ -562,13 +605,13 @@ namespace Economica
             dataGridView1[0, 11].Value = 12;
             dataGridView1[1, 11].Value = "Фонд заработной платы";
             dataGridView1[2, 11].Value = "руб.";
-            dataGridView1[3, 11].Value = _salaryFonds.Sum(x => x.Value);
+            dataGridView1[3, 11].Value = $"{_salaryFonds.Sum(x => x.Value):0.00}";
 
             dataGridView1.Rows.Add();
             dataGridView1[0, 12].Value = 13;
             dataGridView1[1, 12].Value = "Цеховая себестоимость детали";
             dataGridView1[2, 12].Value = "руб.";
-            dataGridView1[3, 12].Value = _primeCost;
+            dataGridView1[3, 12].Value = $"{_primeCost:0.00}";
         }
     }
     

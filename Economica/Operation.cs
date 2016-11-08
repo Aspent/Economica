@@ -10,11 +10,13 @@ namespace Economica
     {
         private float _wageRate;
         private float _rateTime;
+        private string _title;
 
-        public Operation(float wageRate, float rateTime)
+        public Operation(float wageRate, float rateTime, string title)
         {
             _wageRate = wageRate;
             _rateTime = rateTime;
+            _title = title;
         }
 
         public float WageRate
@@ -25,6 +27,11 @@ namespace Economica
         public float RateTime
         {
             get { return _rateTime; }
+        }
+
+        public string Title
+        {
+            get { return _title; }
         }
     }
 }
